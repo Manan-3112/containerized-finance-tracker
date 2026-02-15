@@ -1,0 +1,50 @@
+cat > podman-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  db:
+    image: docker.io/library/postgres:15-alpine
+    container_name: finance-db
+    environment:
+      POSTGRES_DB: financedb
+      POSTGRES_USER: financeuser
+      POSTGRES_PASSWORD: financepass
+    volumes:
+      - finance-db-data:/var/lib/postgresql/data
+    networks:
+      - finance-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U financeuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: finance-web
+    environment:
+      DB_HOST: db
+      DB_NAME: financedb
+      DB_USER: financeuser
+      DB_PASSWORD: financepass
+      SECRET_KEY: your-secret-key-change-in-production
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - finance-network
+    volumes:
+      - ./app:/app
+      - ./templates:/templates
+      - ./static:/static
+
+volumes:
+  finance-db-data:
+
+networks:
+  finance-network:
+    driver: bridge
+EOF
